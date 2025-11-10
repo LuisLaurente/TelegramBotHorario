@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Horarios con Telegram</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-spinner">
+            <i class="fas fa-calendar-alt"></i>
+            <p>Cargando...</p>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-calendar-check"></i>
+                    <span>HorariosTelegram</span>
+                </div>
+                <nav class="nav">
+                    <ul id="nav-menu">
+                        <li><a href="#" data-section="calendar" class="nav-link active">
+                            <i class="fas fa-calendar"></i> Calendario
+                        </a></li>
+                        <li><a href="#" data-section="events" class="nav-link">
+                            <i class="fas fa-plus-circle"></i> Eventos
+                        </a></li>
+                        <li><a href="#" data-section="categories" class="nav-link">
+                            <i class="fas fa-tags"></i> Categorías
+                        </a></li>
+                        <li><a href="#" data-section="telegram" class="nav-link">
+                            <i class="fab fa-telegram"></i> Telegram
+                        </a></li>
+                        <li><a href="#" data-section="settings" class="nav-link">
+                            <i class="fas fa-cog"></i> Configuración
+                        </a></li>
+                    </ul>
+                </nav>
+                <div class="user-menu">
+                    <div id="user-info" class="user-info" style="display: none;">
+                        <img id="user-avatar" src="" alt="Avatar" class="user-avatar">
+                        <span id="user-name"></span>
+                        <button id="logout-btn" class="logout-btn">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
+                    </div>
+                    <button id="login-btn" class="login-btn" style="display: none;">
+                        <i class="fab fa-google"></i> Iniciar Sesión
+                    </button>
+                </div>
+                <button class="mobile-menu-toggle" id="mobile-menu-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="container">
+            <!-- Login Section -->
+            <section id="login-section" class="section login-section" style="display: none;">
+                <div class="login-card">
+                    <div class="login-header">
+                        <i class="fas fa-calendar-check"></i>
+                        <h1>Sistema de Horarios</h1>
+                        <p>Gestiona tus eventos y recibe notificaciones en Telegram</p>
+                    </div>
+                    <div class="login-content">
+                        <h2>Bienvenido</h2>
+                        <p>Para comenzar a usar el sistema, inicia sesión con tu cuenta de Google.</p>
+                        <button id="google-login-btn" class="google-login-btn">
+                            <i class="fab fa-google"></i>
+                            Iniciar Sesión con Google
+                        </button>
+                    </div>
+                    <div class="login-features">
+                        <div class="feature">
+                            <i class="fas fa-calendar-alt"></i>
+                            <h3>Gestión de Horarios</h3>
+                            <p>Crea y edita eventos de forma intuitiva</p>
+                        </div>
+                        <div class="feature">
+                            <i class="fab fa-telegram"></i>
+                            <h3>Notificaciones Telegram</h3>
+                            <p>Recibe recordatorios directamente en tu móvil</p>
+                        </div>
+                        <div class="feature">
+                            <i class="fas fa-palette"></i>
+                            <h3>Personalización</h3>
+                            <p>Configura colores y categorías a tu gusto</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Calendar Section -->
+            <section id="calendar-section" class="section" style="display: none;">
+                <div class="section-header">
+                    <h2><i class="fas fa-calendar"></i> Mi Calendario</h2>
+                    <button id="add-event-btn" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Nuevo Evento
+                    </button>
+                </div>
+                <div class="calendar-container">
+                    <div id="calendar"></div>
+                </div>
+            </section>
+
+            <!-- Events Section -->
+            <section id="events-section" class="section" style="display: none;">
+                <div class="section-header">
+                    <h2><i class="fas fa-plus-circle"></i> Gestión de Eventos</h2>
+                </div>
+                <div class="events-content">
+                    <div class="event-form-container">
+                        <form id="event-form" class="event-form">
+                            <div class="form-group">
+                                <label for="event-title">Título del Evento</label>
+                                <input type="text" id="event-title" name="title" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="event-description">Descripción</label>
+                                <textarea id="event-description" name="description" rows="3"></textarea>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="event-start">Fecha y Hora de Inicio</label>
+                                    <input type="datetime-local" id="event-start" name="start_time" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="event-end">Fecha y Hora de Fin</label>
+                                    <input type="datetime-local" id="event-end" name="end_time" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="event-category">Categoría</label>
+                                    <select id="event-category" name="category_id">
+                                        <option value="">Sin categoría</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="event-reminder">Recordatorio (minutos antes)</label>
+                                    <input type="number" id="event-reminder" name="reminder_minutes" value="30" min="0">
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Guardar Evento
+                                </button>
+                                <button type="button" id="cancel-event-btn" class="btn btn-secondary">
+                                    <i class="fas fa-times"></i> Cancelar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="events-list-container">
+                        <h3>Próximos Eventos</h3>
+                        <div id="events-list" class="events-list">
+                            <!-- Los eventos se cargarán aquí dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Categories Section -->
+            <section id="categories-section" class="section" style="display: none;">
+                <div class="section-header">
+                    <h2><i class="fas fa-tags"></i> Categorías</h2>
+                    <button id="add-category-btn" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Nueva Categoría
+                    </button>
+                </div>
+                <div class="categories-content">
+                    <div class="category-form-container" id="category-form-container" style="display: none;">
+                        <form id="category-form" class="category-form">
+                            <div class="form-group">
+                                <label for="category-name">Nombre de la Categoría</label>
+                                <input type="text" id="category-name" name="name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="category-color">Color</label>
+                                <div class="color-input-container">
+                                    <input type="color" id="category-color" name="color" value="#3498db">
+                                    <span class="color-preview"></span>
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Guardar Categoría
+                                </button>
+                                <button type="button" id="cancel-category-btn" class="btn btn-secondary">
+                                    <i class="fas fa-times"></i> Cancelar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="categories-grid" id="categories-grid">
+                        <!-- Las categorías se cargarán aquí dinámicamente -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Telegram Section -->
+            <section id="telegram-section" class="section" style="display: none;">
+                <div class="section-header">
+                    <h2><i class="fab fa-telegram"></i> Integración con Telegram</h2>
+                </div>
+                <div class="telegram-content">
+                    <div class="telegram-status" id="telegram-status">
+                        <!-- El estado se cargará aquí dinámicamente -->
+                    </div>
+                    <div class="telegram-setup" id="telegram-setup">
+                        <div class="setup-steps">
+                            <h3>Configurar Telegram</h3>
+                            <div class="step">
+                                <div class="step-number">1</div>
+                                <div class="step-content">
+                                    <h4>Busca nuestro bot en Telegram</h4>
+                                    <p>Busca <strong>@HorariosTelegramBot</strong> en Telegram y envía el comando <code>/start</code></p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <div class="step-number">2</div>
+                                <div class="step-content">
+                                    <h4>Obtén tu ID de chat</h4>
+                                    <p>El bot te proporcionará tu ID de chat único. Cópialo.</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <div class="step-number">3</div>
+                                <div class="step-content">
+                                    <h4>Vincula tu cuenta</h4>
+                                    <form id="telegram-link-form" class="telegram-link-form">
+                                        <div class="form-group">
+                                            <label for="telegram-chat-id">ID de Chat de Telegram</label>
+                                            <input type="text" id="telegram-chat-id" name="telegram_chat_id" required 
+                                                   placeholder="Ej: 123456789">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="telegram-username">Usuario de Telegram (opcional)</label>
+                                            <input type="text" id="telegram-username" name="telegram_username" 
+                                                   placeholder="@tu_usuario">
+                                        </div>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fab fa-telegram"></i> Vincular Cuenta
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="telegram-controls" id="telegram-controls" style="display: none;">
+                        <div class="control-group">
+                            <h3>Controles de Notificaciones</h3>
+                            <button id="test-notification-btn" class="btn btn-secondary">
+                                <i class="fas fa-bell"></i> Enviar Notificación de Prueba
+                            </button>
+                            <button id="unlink-telegram-btn" class="btn btn-danger">
+                                <i class="fas fa-unlink"></i> Desvincular Cuenta
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Settings Section -->
+            <section id="settings-section" class="section" style="display: none;">
+                <div class="section-header">
+                    <h2><i class="fas fa-cog"></i> Configuración</h2>
+                </div>
+                <div class="settings-content">
+                    <form id="settings-form" class="settings-form">
+                        <div class="settings-group">
+                            <h3>Configuración General</h3>
+                            <div class="form-group">
+                                <label for="timezone">Zona Horaria</label>
+                                <select id="timezone" name="timezone">
+                                    <option value="UTC">UTC</option>
+                                    <option value="America/New_York">América/Nueva York</option>
+                                    <option value="America/Los_Angeles">América/Los Ángeles</option>
+                                    <option value="America/Mexico_City">América/Ciudad de México</option>
+                                    <option value="America/Argentina/Buenos_Aires">América/Buenos Aires</option>
+                                    <option value="Europe/Madrid">Europa/Madrid</option>
+                                    <option value="Europe/London">Europa/Londres</option>
+                                    <option value="Asia/Tokyo">Asia/Tokio</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="default-reminder">Recordatorio por Defecto (minutos)</label>
+                                <input type="number" id="default-reminder" name="default_reminder_minutes" 
+                                       value="30" min="0" max="1440">
+                            </div>
+                        </div>
+
+                        <div class="settings-group">
+                            <h3>Notificaciones de Telegram</h3>
+                            <div class="form-group checkbox-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="notifications-enabled" name="notifications_enabled">
+                                    <span class="checkbox-custom"></span>
+                                    Activar notificaciones de eventos
+                                </label>
+                            </div>
+                            <div class="form-group checkbox-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="daily-summary-enabled" name="daily_summary_enabled">
+                                    <span class="checkbox-custom"></span>
+                                    Activar resumen diario
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label for="daily-summary-time">Hora del Resumen Diario</label>
+                                <input type="time" id="daily-summary-time" name="daily_summary_time" value="08:00">
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Guardar Configuración
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Event Modal -->
+    <div id="event-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Detalles del Evento</h3>
+                <button class="modal-close" id="modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <!-- El contenido se cargará dinámicamente -->
+            </div>
+            <div class="modal-actions" id="modal-actions">
+                <!-- Las acciones se cargarán dinámicamente -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="notification-toast" class="notification-toast">
+        <div class="toast-content">
+            <i class="toast-icon"></i>
+            <span class="toast-message"></span>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
