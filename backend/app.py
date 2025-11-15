@@ -143,8 +143,16 @@ def serve(path):
 
 if __name__ == '__main__':
     try:
-        app.run(host='0.0.0.0', port=5000, debug=True)
+        # ✅ FIX: Deshabilitar el reloader de Flask para evitar el conflicto 
+        # con la inicialización del bot de Telegram en un hilo separado.
+        app.run(
+            host='0.0.0.0', 
+            port=5000, 
+            debug=True, 
+            use_reloader=False
+        )
     except KeyboardInterrupt:
+        # El bloque KeyboardInterrupt se ve bien para la limpieza.
         if scheduler:
             scheduler.shutdown()
         if telegram_bot:

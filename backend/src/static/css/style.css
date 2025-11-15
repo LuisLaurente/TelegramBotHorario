@@ -1,7 +1,7 @@
 /* Reset y variables CSS */
 :root {
-    --primary-color: #3498db;
-    --primary-dark: #2980b9;
+    --primary-color: #000000;
+    --primary-dark: #000000;
     --secondary-color: #2ecc71;
     --danger-color: #e74c3c;
     --warning-color: #f39c12;
@@ -25,12 +25,12 @@ body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     line-height: 1.6;
     color: var(--dark-color);
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #454545;
     min-height: 100vh;
 }
 
 .container {
-    max-width: 1200px;
+    max-width: 1500px;
     margin: 0 auto;
     padding: 0 20px;
 }
@@ -286,6 +286,7 @@ body {
 
 #calendar {
     max-width: 100%;
+    max-height: 65vh;
 }
 
 /* Forms */

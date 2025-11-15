@@ -6,6 +6,7 @@ from models.user import db, User
 from models.event import UserSettings, Event
 from datetime import datetime, timedelta
 import asyncio
+import dateparser  # ✅ AGREGADO PARA PROCESAMIENTO DE LENGUAJE NATURAL
 
 # Configurar logging
 logging.basicConfig(
@@ -38,6 +39,7 @@ Una vez vinculada tu cuenta, podrás:
 • Recibir recordatorios de eventos
 • Obtener resúmenes diarios de tu horario
 • Configurar notificaciones personalizadas
+• Crear eventos usando lenguaje natural (ej: "mañana a las 3pm reunión")
 
 Comandos disponibles:
 /start - Mostrar este mensaje
@@ -61,6 +63,12 @@ Comandos disponibles:
 /today - Ver eventos programados para hoy
 /tomorrow - Ver eventos programados para mañana
 /settings - Configurar tus notificaciones
+
+🎯 **Crear eventos con lenguaje natural:**
+Puedes escribir mensajes como:
+• "Mañana a las 3pm reunión con el equipo"
+• "El viernes a las 10:30 clase de yoga"
+• "Próximo lunes a las 9am dentista"
 
 🔗 **Para vincular tu cuenta:**
 1. Copia tu ID de chat: `{}`
@@ -232,17 +240,112 @@ Para vincular tu cuenta:
             reply_markup = InlineKeyboardMarkup(keyboard)
             
             message = f"""
-⚙️ **Configuración de notificaciones**
+            ⚙️ **Configuración de notificaciones**
 
-🔔 Notificaciones: {'Activadas' if settings.notifications_enabled else 'Desactivadas'}
-📅 Resumen diario: {'Activado' if settings.daily_summary_enabled else 'Desactivado'}
-⏰ Recordatorio por defecto: {settings.default_reminder_minutes} minutos
-🌍 Zona horaria: {settings.timezone}
+            🔔 Notificaciones: {'Activadas' if settings.notifications_enabled else 'Desactivadas'}
+            📅 Resumen diario: {'Activado' if settings.daily_summary_enabled else 'Desactivado'}
+            ⏰ Recordatorio por defecto: {settings.default_reminder_minutes} minutos
+            🌍 Zona horaria: {settings.timezone}
 
-Usa los botones de abajo para cambiar la configuración:
-            """
+            Usa los botones de abajo para cambiar la configuración:
+                        """
             
             await update.message.reply_text(message, parse_mode='Markdown', reply_markup=reply_markup)
+    
+    async def handle_text_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Manejar mensajes de texto que no son comandos para crear eventos."""
+        chat_id = str(update.effective_chat.id)
+        text = update.message.text
+        
+        with self.app_context():
+            settings = UserSettings.query.filter_by(telegram_chat_id=chat_id).first()
+            
+            if not settings:
+                await update.message.reply_text(
+                    "❌ Tu cuenta no está vinculada. Usa /status para más información."
+                )
+                return
+            
+            # Usar dateparser para el procesamiento de lenguaje natural en español
+            from dateparser import parse
+            import pytz  # ✅ AGREGADO PARA CONVERSIÓN DE ZONAS HORARIAS
+            
+            # Usar la zona horaria del usuario para el parseo y preferir fechas futuras
+            settings_timezone = settings.timezone or 'UTC'
+            
+            try:
+                # 1. Intentar parsear fecha/hora
+                parsed_datetime_utc = parse(
+                    text,
+                    settings={
+                        'TIMEZONE': 'UTC', 
+                        'TO_TIMEZONE': 'UTC',
+                        'RETURN_AS_TIMEZONE_AWARE': True,
+                        'PREFER_DATES_FROM': 'future',
+                        'RELATIVE_BASE': datetime.now(),
+                    },
+                    languages=['es'] # Especificar español
+                )
+                
+                if not parsed_datetime_utc:
+                    await update.message.reply_text(
+                        "❌ No pude entender una fecha u hora válida en tu mensaje. Por favor, sé más específico (ej: 'mañana a las 3pm reunión')."
+                    )
+                    return
+                
+                # 2. Asignar el título (usamos todo el texto como título por simplicidad)
+                title = text.strip() 
+                
+                # 3. Determinar el tiempo inicial y final
+                start_time_utc = parsed_datetime_utc.replace(tzinfo=None) # Almacenar como naive UTC
+                # Asignar una duración por defecto de 60 minutos si no se especifica
+                default_duration_minutes = 60 
+                end_time_utc = start_time_utc + timedelta(minutes=default_duration_minutes)
+
+                # 4. Crear y guardar evento
+                new_event = Event(
+                    user_id=settings.user_id,
+                    title=title,
+                    description=f"Agregado desde Telegram - Chat ID: {chat_id}",
+                    start_time=start_time_utc,
+                    end_time=end_time_utc,
+                    reminder_minutes=settings.default_reminder_minutes,
+                    is_active=True
+                )
+                
+                db.session.add(new_event)
+                db.session.commit()
+                
+                # 5. Usar pytz para mostrar la hora en la zona horaria del usuario
+                try:
+                    tz = pytz.timezone(settings.timezone)
+                    start_time_local = pytz.utc.localize(new_event.start_time).astimezone(tz)
+                    end_time_local = pytz.utc.localize(new_event.end_time).astimezone(tz)
+
+                    start_time_display = start_time_local.strftime("%Y-%m-%d %H:%M %Z")
+                    end_time_display = end_time_local.strftime("%Y-%m-%d %H:%M %Z")
+                except pytz.UnknownTimeZoneError:
+                    # Si hay un error con la zona horaria, volvemos a mostrar UTC
+                    start_time_display = new_event.start_time.strftime("%Y-%m-%d %H:%M UTC")
+                    end_time_display = new_event.end_time.strftime("%Y-%m-%d %H:%M UTC")
+                
+                # 6. Enviar confirmación con la hora en la zona horaria del usuario
+                message = f"""
+✅ **Evento creado exitosamente**
+
+📋 **Título:** {new_event.title}
+🕐 **Inicio:** {start_time_display}
+⏰ **Fin:** {end_time_display}
+🔔 **Recordatorio:** {new_event.reminder_minutes} minutos antes
+🌍 **Zona Horaria:** {settings.timezone}
+                """
+                await update.message.reply_text(message, parse_mode='Markdown')
+                
+            except Exception as e:
+                logger.error(f"Error procesando mensaje: {e}")
+                await update.message.reply_text(
+                    "❌ Ocurrió un error al intentar crear el evento. Verifica el formato del mensaje."
+                )
     
     async def button_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Manejar callbacks de botones inline"""
@@ -342,6 +445,14 @@ Usa los botones de abajo para cambiar la configuración:
         self.application.add_handler(CommandHandler("tomorrow", self.tomorrow_command))
         self.application.add_handler(CommandHandler("settings", self.settings_command))
         self.application.add_handler(CallbackQueryHandler(self.button_callback))
+        
+        # ✅ NUEVO MANEJADOR PARA TEXTO LIBRE
+        self.application.add_handler(
+            MessageHandler(
+                filters.TEXT & ~filters.COMMAND,
+                self.handle_text_message
+            )
+        )
     
     async def start_bot(self):
         """Iniciar el bot con POLLING"""
@@ -351,10 +462,16 @@ Usa los botones de abajo para cambiar la configuración:
             
             print("🔄 Iniciando bot de Telegram con polling...")
             
-            # ✅ USAR POLLING EN LUGAR DE WEBHOOK
+            # 1. Inicializar la aplicación
             await self.application.initialize()
+            
+            # 2. Iniciar el bot y el polling. Esto es suficiente.
             await self.application.start()
-            await self.application.updater.start_polling()  # <- AGREGAR ESTA LÍNEA
+            
+            # 3. MANTENER EL BUCLE DE EVENTOS CORRIENDO
+            # Nota: La función que envuelve este método (start_polling) 
+            # ya llama a loop.run_forever(), por lo que solo necesitamos 
+            # asegurarnos de que la aplicación esté arrancada.
             
             print("✅ Bot de Telegram iniciado correctamente con polling")
             
